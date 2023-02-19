@@ -1,11 +1,13 @@
 #include "cpprnd.h"
 #if defined(__linux__) || defined(__unix__)
-#include <sys/types.h>
-#include <fcntl.h>f
-#include <unistd.h>
+#    ifdef CPPRND_CRPNG
+#        include <fcntl.h>
+#        include <sys/types.h>
+#        include <unistd.h>
+#    endif
 #endif
 #if defined(_WIN32)
-#include <Windows.h>
+#    include <Windows.h>
 #endif
 
 #if defined(SFMT_SSE)
@@ -43,9 +45,9 @@ namespace
      * @param [in] x
      * @return a [0 1) real number
      */
-    inline double to_real(uint32_t x)
+    inline float to_real32(uint32_t x)
     {
-        return x * (1.0 / 4294967296.0);
+        return static_cast<float>((x >> 8) * (1.0 / 16777216.0));
     }
 
     /**
@@ -53,7 +55,7 @@ namespace
      * @param [in] x
      * @return a [0 1) real number
      */
-    inline double to_real(uint64_t x)
+    inline double to_real64(uint64_t x)
     {
         return (x >> 11) * (1.0 / 9007199254740992.0);
     }
@@ -122,7 +124,7 @@ uint32_t PCG32::rand()
 
 float PCG32::frand()
 {
-    return static_cast<float>(to_real(rand()));
+    return to_real32(rand());
 }
 
 PCGS32::PCGS32()
@@ -161,7 +163,7 @@ uint32_t PCGS32::rand()
 
 float PCGS32::frand()
 {
-    return static_cast<float>(to_real(rand()));
+    return to_real32(rand());
 }
 
 //--- PCG64
@@ -237,7 +239,7 @@ uint64_t PCG64::rand()
 
 double PCG64::frand()
 {
-    return to_real(rand());
+    return to_real64(rand());
 }
 
 //--- SplitMix
@@ -272,7 +274,7 @@ RandWELL512::~RandWELL512()
 void RandWELL512::srand(uint32_t seed)
 {
     state_[0] = scramble(seed);
-    for(uint32_t i=1; i<N; ++i){
+    for(uint32_t i = 1; i < N; ++i) {
         state_[i] = scramble(seed);
     }
 }
@@ -296,7 +298,7 @@ uint32_t RandWELL512::rand()
 
 float RandWELL512::frand()
 {
-    return static_cast<float>(to_real(rand()));
+    return to_real32(rand());
 }
 
 //--- SFMT
@@ -515,7 +517,7 @@ uint32_t SFMT19937::rand()
 
 float SFMT19937::frand()
 {
-    return static_cast<float>(to_real(rand()));
+    return to_real32(rand());
 }
 
 //--- MELG
@@ -689,9 +691,10 @@ uint64_t MELG19937::rand()
 
 double MELG19937::frand()
 {
-    return (rand() >> 11) * (1.0 / 9007199254740992.0);
+    return to_real64(rand());
 }
 
+#ifdef CPPRND_CRPNG
 //--- CPRNG
 //---------------------------------------------------------
 bool crypt_rand(uint32_t size, void* buffer)
@@ -719,6 +722,7 @@ bool crypt_rand(uint32_t size, void* buffer)
     return true;
 #endif
 }
+#endif
 
 //--- RandomBinarySelect
 //---------------------------------------------------------
@@ -790,13 +794,13 @@ uint32_t RandomAliasSelect::size() const
 
 void RandomAliasSelect::build(uint32_t size, float* weights)
 {
-    assert(0<=size);
+    assert(0 <= size);
     if(capacity_ < size) {
         do {
             capacity_ += 16UL;
         } while(capacity_ < size);
         delete[] weights_;
-        weights_ = new float[capacity_*3];
+        weights_ = new float[capacity_ * 3];
         aliases_ = reinterpret_cast<uint32_t*>(weights_ + capacity_);
     }
     size_ = size;

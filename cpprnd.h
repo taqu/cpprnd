@@ -5,8 +5,8 @@
  * # cpprnd
  *
  */
-#include <cstdint>
 #include <cassert>
+#include <cstdint>
 #include <utility>
 
 namespace cpprnd
@@ -65,6 +65,7 @@ public:
      * @return [0 1)
      */
     float frand();
+
 private:
     inline static constexpr uint64_t Increment = 1442695040888963407ULL;
     inline static constexpr uint64_t Multiplier = 6364136223846793005ULL;
@@ -115,6 +116,7 @@ public:
      * @return [0 1)
      */
     float frand();
+
 private:
     inline static constexpr uint64_t Multiplier = 6364136223846793005ULL;
     uint64_t increment_;
@@ -220,6 +222,7 @@ public:
      * @return [0 1)
      */
     float frand();
+
 private:
     static const uint32_t N = 16;
     uint32_t state_[N];
@@ -309,6 +312,7 @@ public:
      * @return [0 1)
      */
     float frand();
+
 private:
     sfmt_param19937::state_t state_;
 };
@@ -392,15 +396,18 @@ public:
      * @return [0 1)
      */
     double frand();
+
 private:
     melg_param19937::state_t state_;
 };
 
+#ifdef CPPRND_CRPNG
 //--- CPRNG
 //---------------------------------------------------------
 uint32_t crypt_rand32();
 uint64_t crypt_rand64();
 bool crypt_rand(uint32_t size, void* buffer);
+#endif
 
 //--- Common algorithms
 //---------------------------------------------------------
@@ -410,7 +417,7 @@ bool crypt_rand(uint32_t size, void* buffer);
 template<class T, class U>
 U range_ropen(T& random, U vmin, U vmax)
 {
-    assert(vmin<=vmax);
+    assert(vmin <= vmax);
     return static_cast<U>(random.frand() * (vmax - vmin)) + vmin;
 }
 
@@ -420,7 +427,7 @@ U range_ropen(T& random, U vmin, U vmax)
 template<class T, class U>
 U range_ropen(T& random, U v)
 {
-    assert(0<=v);
+    assert(0 <= v);
     return static_cast<U>(random.frand() * v);
 }
 
@@ -451,7 +458,7 @@ uint32_t range_ropen(T& random, uint32_t s)
 template<class T>
 int32_t range_ropen(T& random, int32_t s)
 {
-    assert(0<=s);
+    assert(0 <= s);
     return static_cast<int32_t>(range_ropen(random, static_cast<uint32_t>(s)));
 }
 
@@ -461,7 +468,7 @@ int32_t range_ropen(T& random, int32_t s)
 template<class T>
 uint32_t range_ropen(T& random, uint32_t vmin, uint32_t vmax)
 {
-    assert(vmin<=vmax);
+    assert(vmin <= vmax);
     return range_ropen(random, vmax - vmin) + vmin;
 }
 
@@ -482,8 +489,8 @@ int32_t range_ropen(T& random, int32_t vmin, int32_t vmax)
 template<class T>
 uint64_t range_ropen(T& random, uint64_t s)
 {
-    assert(0<=s);
-    uint64_t t = (~s+1) % s;
+    assert(0 <= s);
+    uint64_t t = (~s + 1) % s;
     uint64_t x;
     do {
         x = random.rand();
@@ -494,7 +501,7 @@ uint64_t range_ropen(T& random, uint64_t s)
 template<class T>
 int64_t range_ropen(T& random, int64_t s)
 {
-    assert(0<=s);
+    assert(0 <= s);
     return static_cast<int64_t>(range_ropen(random, static_cast<uint64_t>(s)));
 }
 
@@ -504,21 +511,21 @@ int64_t range_ropen(T& random, int64_t s)
 template<class T>
 uint64_t range_ropen(T& random, uint64_t vmin, uint64_t vmax)
 {
-    assert(vmin<=vmax);
+    assert(vmin <= vmax);
     return range_ropen(random, vmax - vmin) + vmin;
 }
 
 template<class T>
 int64_t range_ropen(T& random, int64_t vmin, int64_t vmax)
 {
-    assert(vmin<=vmax);
+    assert(vmin <= vmax);
     return range_ropen(random, vmax - vmin) + vmin;
 }
 
 template<class T, class U>
 void shuffle(T& random, U* start, U* end)
 {
-    std::ptrdiff_t size = static_cast<std::ptrdiff_t>(end-start);
+    std::ptrdiff_t size = static_cast<std::ptrdiff_t>(end - start);
     for(; 1 < size; --size) {
         std::size_t offset = range_ropen(random, size);
         std::swap(*(start + size - 1), *(start + offset));
@@ -545,6 +552,7 @@ public:
     void build(uint32_t size, const float* weights);
     template<class T>
     uint32_t select(T& random) const;
+
 private:
     RandomBinarySelect(const RandomBinarySelect&) = delete;
     RandomBinarySelect& operator=(const RandomBinarySelect&) = delete;
@@ -560,7 +568,7 @@ uint32_t RandomBinarySelect::select(T& random) const
     float x = random.frand();
     int32_t count = size_;
     while(0 < count) {
-        int32_t d = count>>1;
+        int32_t d = count >> 1;
         const float* m = first + d;
         if(*m < x) {
             first = m + 1;
@@ -569,8 +577,8 @@ uint32_t RandomBinarySelect::select(T& random) const
             count = d;
         }
     }
-    uint32_t result = static_cast<uint32_t>(first-weights_);
-    return size_<=result? size_-1 : result;
+    uint32_t result = static_cast<uint32_t>(first - weights_);
+    return size_ <= result ? size_ - 1 : result;
 }
 
 //--- RandomAliasSelect
@@ -584,6 +592,7 @@ public:
     void build(uint32_t size, float* weights);
     template<class T>
     uint32_t select(T& random) const;
+
 private:
     RandomAliasSelect(const RandomAliasSelect&) = delete;
     RandomAliasSelect& operator=(const RandomAliasSelect&) = delete;
@@ -598,7 +607,7 @@ uint32_t RandomAliasSelect::select(T& random) const
 {
     uint32_t index = range_ropen(random, size_);
     float w = random.frand();
-    return w<weights_[index]? index : aliases_[index];
+    return w < weights_[index] ? index : aliases_[index];
 }
 } // namespace cpprnd
 #endif // INC_CPPRND_H_

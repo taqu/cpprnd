@@ -9,10 +9,6 @@ if(MSVC)
 
     set(DEFAULT_CXX_FLAGS "/DWIN32 /D_WINDOWS /D_UNICODE /DUNICODE /W4 /WX- /nologo /fp:precise /arch:AVX /Oi /Zc:wchar_t /TP /Gd")
 
-    if(DEFINED USE_D3D12DOWNLEVEL)
-        set(DEFAULT_CXX_FLAGS "${DEFAULT_CXX_FLAGS} /DLG3_D3D12_DOWNLEVEL")
-    endif()
-
     if(MSVC_VERSION VERSION_LESS_EQUAL "1900")
         set(DEFAULT_CXX_FLAGS "${DEFAULT_CXX_FLAGS} /Zc:__cplusplus /std:c++latest")
     else()
