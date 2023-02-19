@@ -1,5 +1,12 @@
 #include "cpprnd.h"
-#include <cassert>
+#if defined(__linux__) || defined(__unix__)
+#include <sys/types.h>
+#include <fcntl.h>f
+#include <unistd.h>
+#endif
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
 
 #if defined(SFMT_SSE)
 #    include <immintrin.h>
@@ -683,5 +690,167 @@ uint64_t MELG19937::rand()
 double MELG19937::frand()
 {
     return (rand() >> 11) * (1.0 / 9007199254740992.0);
+}
+
+//--- CPRNG
+//---------------------------------------------------------
+bool crypt_rand(uint32_t size, void* buffer)
+{
+    assert(nullptr != buffer);
+#if _WIN32
+    HMODULE handle = LoadLibraryA("Advapi32.dll");
+    if(nullptr == handle) {
+        return false;
+    }
+    FARPROC procAddress = GetProcAddress(handle, "SystemFunction036");
+    BOOLEAN result = (*(BOOLEAN(*)(PVOID, ULONG))procAddress)(buffer, size);
+    FreeLibrary(handle);
+    return TRUE == result;
+#else
+    int32_t fd = open("/dev/random", O_RDONLY);
+    if(fd < 0) {
+        fd = open("/dev/urandom", O_RDONLY);
+        if(fd < 0) {
+            return false;
+        }
+    }
+    read(fd, buffer, size);
+    close(fd);
+    return true;
+#endif
+}
+
+//--- RandomBinarySelect
+//---------------------------------------------------------
+RandomBinarySelect::RandomBinarySelect()
+    : capacity_(0)
+    , size_(0)
+    , weights_(nullptr)
+{
+}
+
+RandomBinarySelect::~RandomBinarySelect()
+{
+    delete[] weights_;
+    weights_ = nullptr;
+}
+
+uint32_t RandomBinarySelect::size() const
+{
+    return size_;
+}
+
+void RandomBinarySelect::build(uint32_t size, const float* weights)
+{
+    if(capacity_ < size) {
+        while(capacity_ < size) {
+            capacity_ += 16UL;
+        }
+        delete[] weights_;
+        weights_ = new float[capacity_];
+    }
+    size_ = size;
+    // Kahan's summation
+    float sum = 0.0f;
+    float c = 0.0f;
+    for(uint32_t i = 0; i < size_; ++i) {
+        float x = weights[i] - c;
+        float t = sum + x;
+        c = (t - sum) - x;
+        sum = t;
+        weights_[i] = sum;
+    }
+    if(sum < 1.0e-7f) {
+        return;
+    }
+    float scale = 1.0f / sum;
+    for(uint32_t i = 0; i < size_; ++i) {
+        weights_[i] *= scale;
+    }
+}
+
+RandomAliasSelect::RandomAliasSelect()
+    : capacity_(0)
+    , size_(0)
+    , weights_(nullptr)
+    , aliases_(nullptr)
+{
+}
+
+RandomAliasSelect::~RandomAliasSelect()
+{
+    aliases_ = nullptr;
+    delete[] weights_;
+}
+
+uint32_t RandomAliasSelect::size() const
+{
+    return size_;
+}
+
+void RandomAliasSelect::build(uint32_t size, float* weights)
+{
+    assert(0<=size);
+    if(capacity_ < size) {
+        do {
+            capacity_ += 16UL;
+        } while(capacity_ < size);
+        delete[] weights_;
+        weights_ = new float[capacity_*3];
+        aliases_ = reinterpret_cast<uint32_t*>(weights_ + capacity_);
+    }
+    size_ = size;
+
+    // Kahan's summation
+    float total = 0.0f;
+    {
+        float c = 0.0f;
+        for(uint32_t i = 0; i < size; ++i) {
+            float x = weights[i] - c;
+            float t = total + x;
+            c = (t - total) - x;
+            total = t;
+        }
+    }
+
+    float average = total / size_;
+    float scale = (1.0e-7f < total) ? static_cast<float>(size_) / total : 0.0f;
+    uint32_t* indices = reinterpret_cast<uint32_t*>(aliases_ + capacity_);
+
+    int32_t underfull = -1;
+    int32_t overfull = static_cast<int32_t>(size_);
+    for(uint32_t i = 0; i < size_; ++i) {
+        if(average <= weights[i]) {
+            --overfull;
+            indices[overfull] = i;
+        } else {
+            ++underfull;
+            indices[underfull] = i;
+        }
+    }
+    while(0 <= underfull && overfull < static_cast<int32_t>(size_)) {
+        uint32_t under = indices[underfull];
+        --underfull;
+        uint32_t over = indices[overfull];
+        ++overfull;
+        aliases_[under] = over;
+        weights_[under] = weights[under] * scale;
+        weights[over] += weights[under] - average;
+        if(weights[over] < average) {
+            ++underfull;
+            indices[underfull] = over;
+        } else {
+            --overfull;
+            indices[overfull] = over;
+        }
+    }
+    while(0 <= underfull) {
+        weights_[indices[underfull]] = 1.0f;
+        --underfull;
+    }
+    while(overfull < static_cast<int32_t>(size_)) {
+        weights_[indices[overfull]] = 1.0f;
+        ++overfull;
+    }
 }
 } // namespace cpprnd
