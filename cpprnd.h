@@ -1,5 +1,10 @@
 #ifndef INC_CPPRND_H_
 #define INC_CPPRND_H_
+/**
+ * @mainpage
+ * # cpprnd
+ *
+ */
 #include <cstdint>
 
 namespace cpprnd
@@ -12,41 +17,103 @@ namespace cpprnd
 #    define CPPRND_RESTRICT
 #endif
 
+inline static constexpr uint32_t CPPRNG_DEFAULT_SEED32 = 12345UL;
+inline static constexpr uint64_t CPPRNG_DEFAULT_SEED64 = 12345ULL;
+
 //--- PCG32
 //---------------------------------------------------------
+/**
+ * @brief A fast 32 bit PRNG
+ *
+ * | Feature |      |
+ * | :------ | :--- |
+ * | Bits    | 32   |
+ * | Period  | 2^64 |
+ * | Streams | 1    |
+ */
 class PCG32
 {
 public:
+    /**
+     * @brief Initialize with CPPRNG_DEFAULT_SEED64
+     */
     PCG32();
+
+    /**
+     * @brief Initialize with a seed
+     * @param [in] seed ... initialize states with
+     */
     explicit PCG32(uint64_t seed);
     ~PCG32();
 
+    /**
+     * @brief Initialize states with a seed
+     * @param [in] seed
+     */
     void srand(uint64_t seed);
 
+    /**
+     * @brief Generate a 32bit unsigned value
+     * @return
+     */
     uint32_t rand();
 
+    /**
+     * @brief Generate a 32bit real number
+     * @return [0 1)
+     */
     float frand();
-
 private:
     inline static constexpr uint64_t Increment = 1442695040888963407ULL;
     inline static constexpr uint64_t Multiplier = 6364136223846793005ULL;
     uint64_t state_;
 };
 
+/**
+ * @brief A fast 32 bit PRNG
+ *
+ * | Feature |      |
+ * | :------ | :--- |
+ * | Bits    | 32   |
+ * | Period  | 2^64 |
+ * | Streams | 2^63 |
+ */
 class PCGS32
 {
 public:
     inline static constexpr uint64_t DefaultStream = 1442695040888963407ULL;
+    /**
+     * @brief Initialize with CPPRNG_DEFAULT_SEED64 and DefaultStream
+     */
     PCGS32();
+
+    /**
+     * @brief Initialize with a seed and a stream
+     * @param [in] seed ... initialize states with
+     * @param [in] stream
+     */
     explicit PCGS32(uint64_t seed, uint64_t stream = DefaultStream);
     ~PCGS32();
-    void srand(uint64_t seed, uint64_t stream = DefaultStream);
-    uint32_t rand();
-    float frand();
 
+    /**
+     * @brief Initialize with a seed and a stream
+     * @param [in] seed ... initialize states with
+     * @param [in] stream
+     */
+    void srand(uint64_t seed, uint64_t stream = DefaultStream);
+
+    /**
+     * @brief Generate a 32bit unsigned value
+     * @return
+     */
+    uint32_t rand();
+
+    /**
+     * @brief Generate a 32bit real number
+     * @return [0 1)
+     */
+    float frand();
 private:
-    PCGS32(const PCGS32&) = delete;
-    PCGS32& operator=(const PCGS32&) = delete;
     inline static constexpr uint64_t Multiplier = 6364136223846793005ULL;
     uint64_t increment_;
     uint64_t state_;
@@ -54,6 +121,15 @@ private:
 
 //--- PCG64
 //---------------------------------------------------------
+/**
+ * @brief A 64 bit PRNG
+ *
+ * | Feature |      |
+ * | :------ | :--- |
+ * | Bits    | 64   |
+ * | Period  | 2^128|
+ * | Streams | 1    |
+ */
 class PCG64
 {
 public:
@@ -85,30 +161,65 @@ private:
 
 //--- SplitMix
 //---------------------------------------------------------
+/**
+ * @brief A fast 64 bit PRNG
+ *
+ * | Feature |      |
+ * | :------ | :--- |
+ * | Bits    | 64   |
+ * | Period  | 2^64 |
+ * | Streams | 1    |
+ */
 class SplitMix
 {
 public:
     static uint64_t next(uint64_t& state);
 };
 
-//--- RandWELL
+//--- RandWELL512
 //---------------------------------------------------------
-class RandWELL
+/**
+ * @brief A high-dimensional uniform distributed 32 bit PRNG
+ *
+ * | Feature |       |
+ * | :------ | :---- |
+ * | Bits    | 32    |
+ * | Period  | 2^512 |
+ * | Streams | 1     |
+ */
+class RandWELL512
 {
 public:
-    RandWELL();
-    explicit RandWELL(uint32_t seed);
-    ~RandWELL();
+    /**
+     * @brief Initialize with CPPRNG_DEFAULT_SEED32
+     */
+    RandWELL512();
+    /**
+     * @brief Initialize with a seed
+     * @param [in] seed ... initialize states with
+     */
+    explicit RandWELL512(uint32_t seed);
+    ~RandWELL512();
 
+    /**
+     * @brief Initialize with a seed
+     * @param [in] seed ... initialize states with
+     */
     void srand(uint32_t seed);
 
+    /**
+     * @brief Generate a 32bit unsigned value
+     * @return
+     */
     uint32_t rand();
 
+    /**
+     * @brief Generate a 32bit real number
+     * @return [0 1)
+     */
     float frand();
-
 private:
     static const uint32_t N = 16;
-
     uint32_t state_[N];
     uint32_t index_;
 };
@@ -156,17 +267,46 @@ struct sfmt_param19937
     };
 };
 
+/**
+ * @brief A long term 32 bit PRNG
+ *
+ * | Feature |         |
+ * | :------ | :------ |
+ * | Bits    | 32      |
+ * | Period  | 2^19937 |
+ * | Streams | 1       |
+ */
 class SFMT19937
 {
 public:
+    /**
+     * @brief Initialize with CPPRNG_DEFAULT_SEED32
+     */
     SFMT19937();
+    /**
+     * @brief Initialize with a seed
+     * @param [in] seed ... initialize states with
+     */
     explicit SFMT19937(uint32_t seed);
     ~SFMT19937();
 
+    /**
+     * @brief Initialize with a seed
+     * @param [in] seed ... initialize states with
+     */
     void srand(uint32_t seed);
-    uint32_t rand();
-    float frand();
 
+    /**
+     * @brief Generate a 32bit unsigned value
+     * @return
+     */
+    uint32_t rand();
+
+    /**
+     * @brief Generate a 32bit real number
+     * @return [0 1)
+     */
+    float frand();
 private:
     sfmt_param19937::state_t state_;
 };
@@ -197,19 +337,59 @@ struct melg_param19937
     };
 };
 
+/**
+ * @brief A high-dimensional uniform distributed 64 bit PRNG
+ *
+ * | Feature |         |
+ * | :------ | :------ |
+ * | Bits    | 64      |
+ * | Period  | 2^19937 |
+ * | Streams | 1       |
+ */
 class MELG19937
 {
 public:
+    /**
+     * @brief Initialize with CPPRNG_DEFAULT_SEED64
+     */
     MELG19937();
+    /**
+     * @brief Initialize with a seed
+     * @param [in] seed ... initialize states with
+     */
     explicit MELG19937(uint64_t seed);
+    /**
+     * @brief Initialize with seeds
+     * @param [in] size ...  the number of seeds
+     * @param [in] seeds ... seeds for initialization
+     */
     MELG19937(uint64_t size, const uint64_t* seeds);
     ~MELG19937();
 
+    /**
+     * @brief Initialize with a seed
+     * @param [in] seed ... initialize states with
+     */
     void srand(uint64_t seed);
-    void srand(uint64_t size, const uint64_t* seeds);
-    uint64_t rand();
-    double frand();
 
+    /**
+     * @brief Initialize with seeds
+     * @param [in] size ...  the number of seeds
+     * @param [in] seeds ... seeds for initialization
+     */
+    void srand(uint64_t size, const uint64_t* seeds);
+
+    /**
+     * @brief Generate a 64bit unsigned value
+     * @return
+     */
+    uint64_t rand();
+
+    /**
+     * @brief Generate a 64bit real number
+     * @return [0 1)
+     */
+    double frand();
 private:
     melg_param19937::state_t state_;
 };

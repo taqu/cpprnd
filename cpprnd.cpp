@@ -9,27 +9,54 @@ namespace cpprnd
 {
 namespace
 {
+    /**
+     * @brief 32 bit right rotation
+     * @param [in] x ... input
+     * @param [in] r ... count of rotation
+     * @return rotated
+     */
     inline uint32_t rotr32(uint32_t x, uint32_t r)
     {
         return (x >> r) | (x << ((~r + 1) & 31U));
     }
 
+    /**
+     * @brief 64 bit right rotation
+     * @param [in] x ... input
+     * @param [in] r ... count of rotation
+     * @return rotated
+     */
     inline uint64_t rotr64(uint64_t value, uint32_t rot)
     {
         return (value >> rot) | (value << ((~rot + 1) & 63U));
     }
 
+    /**
+     * @brief Convert to a [0 1) real number
+     * @param [in] x
+     * @return a [0 1) real number
+     */
     inline double to_real(uint32_t x)
     {
         return x * (1.0 / 4294967296.0);
     }
 
+    /**
+     * @brief Convert to a [0 1) real number
+     * @param [in] x
+     * @return a [0 1) real number
+     */
     inline double to_real(uint64_t x)
     {
         return (x >> 11) * (1.0 / 9007199254740992.0);
     }
 
-    uint32_t scramble(uint32_t& x)
+    /**
+     * @brief Scramble an input
+     * @param [in] x
+     * @return scrambled
+     */
+    uint32_t scramble(uint32_t x)
     {
         x += 0x7f4A7C15UL;
         uint32_t t = x;
@@ -38,7 +65,12 @@ namespace
         return t ^ (t >> 15);
     }
 
-    uint64_t scramble(uint64_t& x)
+    /**
+     * @brief Scramble an input
+     * @param [in] x
+     * @return scrambled
+     */
+    uint64_t scramble(uint64_t x)
     {
         x += 0x9E3779B97f4A7C15ULL;
         uint64_t t = x;
@@ -46,13 +78,12 @@ namespace
         t = (t ^ (t >> 27)) * 0x94D049BB133111EBULL;
         return t ^ (t >> 31);
     }
-
 } // namespace
 
-//--- PCG
-//---------------------------------------------
+//--- PCG32
+//------------------------------------------------------------
 PCG32::PCG32()
-    : state_{0x4D595DF4D0F33173ULL}
+    : state_{CPPRNG_DEFAULT_SEED64}
 {
 }
 
@@ -87,10 +118,8 @@ float PCG32::frand()
     return static_cast<float>(to_real(rand()));
 }
 
-//--- PCGS32
-//------------------------------------------------------------
 PCGS32::PCGS32()
-    : state_(0x4D595DF4D0F33173ULL)
+    : state_(CPPRNG_DEFAULT_SEED64)
     , increment_(DefaultStream)
 {
 }
@@ -128,6 +157,8 @@ float PCGS32::frand()
     return static_cast<float>(to_real(rand()));
 }
 
+//--- PCG64
+//------------------------------------------------------------
 inline PCG64::UInt128 PCG64::add(const UInt128& x0, const UInt128& x1)
 {
     uint64_t low = x0.low_ + x1.low_;
@@ -191,14 +222,6 @@ void PCG64::srand(uint64_t seed0, uint64_t seed1)
     }
 }
 
-namespace
-{
-    inline uint64_t rotr64(uint64_t value, uint32_t rot)
-    {
-        return (value >> rot) | (value << ((~rot + 1) & 63U));
-    }
-} // namespace
-
 uint64_t PCG64::rand()
 {
     next();
@@ -221,24 +244,25 @@ uint64_t SplitMix::next(uint64_t& state)
     return t ^ (t >> 31);
 }
 
-//--- RandWELL
+//--- RandWELL512
 //---------------------------------------------
-RandWELL::RandWELL()
+RandWELL512::RandWELL512()
     : index_(0)
 {
+    srand(CPPRNG_DEFAULT_SEED32);
 }
 
-RandWELL::RandWELL(uint32_t seed)
+RandWELL512::RandWELL512(uint32_t seed)
     : index_(0)
 {
     srand(seed);
 }
 
-RandWELL::~RandWELL()
+RandWELL512::~RandWELL512()
 {
 }
 
-void RandWELL::srand(uint32_t seed)
+void RandWELL512::srand(uint32_t seed)
 {
     state_[0] = scramble(seed);
     for(uint32_t i=1; i<N; ++i){
@@ -246,7 +270,7 @@ void RandWELL::srand(uint32_t seed)
     }
 }
 
-uint32_t RandWELL::rand()
+uint32_t RandWELL512::rand()
 {
     uint32_t a, b, c, d;
 
@@ -257,13 +281,13 @@ uint32_t RandWELL::rand()
     c ^= c >> 11;
     a = state_[index_] = b ^ c;
     d = a ^ ((a << 5) & 0xDA442D24UL);
-    index_ = (index_ + 15) & 15;
+    index_ = (index_ + 1) & 15;
     a = state_[index_];
     state_[index_] = a ^ b ^ d ^ (a << 2) ^ (b << 18) ^ (c << 28);
     return state_[index_];
 }
 
-float RandWELL::frand()
+float RandWELL512::frand()
 {
     return static_cast<float>(to_real(rand()));
 }
@@ -460,7 +484,7 @@ namespace
 
 SFMT19937::SFMT19937()
 {
-    init_rand<sfmt_param19937>(&state_, 1234);
+    init_rand<sfmt_param19937>(&state_, CPPRNG_DEFAULT_SEED32);
 }
 
 SFMT19937::SFMT19937(uint32_t seed)
@@ -593,7 +617,7 @@ namespace
 
 MELG19937::MELG19937()
 {
-    melg_init_rand<melg_param19937>(&state_, 1234);
+    melg_init_rand<melg_param19937>(&state_, CPPRNG_DEFAULT_SEED64);
 }
 
 MELG19937::MELG19937(uint64_t seed)
